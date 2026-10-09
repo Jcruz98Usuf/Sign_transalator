@@ -5,11 +5,14 @@
 
 import React from 'react';
 import {
+  Activity,
+  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   Cpu,
   Database,
   Globe,
+  Keyboard,
   Layers,
   Lock,
   Mic,
@@ -154,8 +157,9 @@ export const ArchitectureModal: React.FC = () => {
                 Continuously evaluates incoming frames with temporal smoothing windows and hold-to-confirm timers, converting signs into clean text tokens.
               </p>
             </div>
-            <div className="mt-4 p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-cyan-300">
-              🤟 Detected → "HELP"
+            <div className="mt-4 p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-cyan-300 flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-teal-400" />
+              <span>Detected Token &rarr; "HELP"</span>
             </div>
           </div>
 
@@ -169,7 +173,7 @@ export const ArchitectureModal: React.FC = () => {
                 Unified Message Layer
               </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Signs, voice speech, and typed text merge into a single dialogue format, synthesized by Gemini into clinical sentences and spoken via Pocket TTS.
+                Signs, voice speech, and typed text merge into a single dialogue format, synthesized into clinical sentences and spoken via Pocket TTS.
               </p>
             </div>
             <div className="mt-4 p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-emerald-300">
@@ -189,7 +193,9 @@ export const ArchitectureModal: React.FC = () => {
           {/* Modalities Column */}
           <div className="w-full md:w-1/4 space-y-3">
             <div className="p-3.5 rounded-xl bg-slate-950 border border-teal-500/40 flex items-center gap-3">
-              <span className="text-2xl">🤟</span>
+              <div className="w-9 h-9 rounded-lg bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                <Activity className="w-5 h-5" />
+              </div>
               <div>
                 <span className="text-xs font-bold text-slate-200 block">SIGN LANGUAGE</span>
                 <span className="text-[10px] text-teal-400">MediaPipe Hand Tracking</span>
@@ -197,7 +203,9 @@ export const ArchitectureModal: React.FC = () => {
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-950 border border-cyan-500/40 flex items-center gap-3">
-              <span className="text-2xl">🎤</span>
+              <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                <Mic className="w-5 h-5" />
+              </div>
               <div>
                 <span className="text-xs font-bold text-slate-200 block">VOICE SPEECH</span>
                 <span className="text-[10px] text-cyan-400">Web Speech Dictation</span>
@@ -205,7 +213,9 @@ export const ArchitectureModal: React.FC = () => {
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-700 flex items-center gap-3">
-              <span className="text-2xl">⌨️</span>
+              <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
+                <Keyboard className="w-5 h-5" />
+              </div>
               <div>
                 <span className="text-xs font-bold text-slate-200 block">TYPED TEXT</span>
                 <span className="text-[10px] text-slate-400">Medical Clinical Presets</span>
@@ -221,7 +231,7 @@ export const ArchitectureModal: React.FC = () => {
           {/* Unified Core */}
           <div className="w-full md:w-2/5 p-5 rounded-2xl bg-gradient-to-b from-slate-950 to-slate-900 border border-teal-500/50 shadow-xl text-center space-y-3">
             <div className="w-12 h-12 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center mx-auto text-teal-300">
-              <Sparkles className="w-6 h-6" />
+              <Cpu className="w-6 h-6" />
             </div>
             <div>
               <h4 className="text-sm font-extrabold text-white">
@@ -244,15 +254,19 @@ export const ArchitectureModal: React.FC = () => {
           {/* Output Modalities */}
           <div className="w-full md:w-1/4 space-y-3">
             <div className="p-3.5 rounded-xl bg-slate-950 border border-teal-500/40 flex items-center gap-3">
-              <span className="text-2xl">🤟</span>
+              <div className="w-9 h-9 rounded-lg bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                <Layers className="w-5 h-5" />
+              </div>
               <div>
                 <span className="text-xs font-bold text-slate-200 block">KSL SIGN AVATAR</span>
-                <span className="text-[10px] text-teal-400">Animated Signing 🇰🇪</span>
+                <span className="text-[10px] text-teal-400">Kinematic Humanoid Signer</span>
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-950 border border-emerald-500/40 flex items-center gap-3">
-              <span className="text-2xl">🔊</span>
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <Volume2 className="w-5 h-5" />
+              </div>
               <div>
                 <span className="text-xs font-bold text-slate-200 block">POCKET TTS</span>
                 <span className="text-[10px] text-emerald-400">Speech Synthesis Output</span>
@@ -260,7 +274,9 @@ export const ArchitectureModal: React.FC = () => {
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-950 border border-amber-500/40 flex items-center gap-3">
-              <span className="text-2xl">🚨</span>
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
               <div>
                 <span className="text-xs font-bold text-slate-200 block">TRIAGE ALERT</span>
                 <span className="text-[10px] text-amber-400">Emergency & Urgency Tag</span>
@@ -279,34 +295,34 @@ export const ArchitectureModal: React.FC = () => {
           <span className="text-xs text-slate-400">Kenyan Sign Language (KSL) Focus</span>
         </div>
         <h3 className="text-lg font-bold text-white mb-2">
-          Reverse Direction: Voice ➡️ KSL Sign Animation
+          Reverse Direction: Voice to KSL Sign Animation
         </h3>
         <p className="text-xs text-slate-300 max-w-3xl leading-relaxed mb-6">
           To achieve complete two-way clinical communication, hearing clinicians can speak in English or Kiswahili, and the system translates the spoken words into structured KSL grammar, driving an animated avatar with articulated joints, fingers, and facial non-manual markers.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-center">
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-            <span className="text-xl mb-1 block">🎤</span>
+          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col items-center">
+            <Mic className="w-5 h-5 text-cyan-400 mb-1.5" />
             <span className="text-xs font-bold text-slate-200 block">1. Doctor Voice</span>
             <span className="text-[10px] text-slate-400">English / Kiswahili</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-teal-500/30">
-            <span className="text-xl mb-1 block">🤖</span>
+          <div className="p-3.5 rounded-2xl bg-slate-950 border border-teal-500/30 flex flex-col items-center">
+            <Cpu className="w-5 h-5 text-teal-400 mb-1.5" />
             <span className="text-xs font-bold text-teal-300 block">2. KSL Gloss Engine</span>
             <span className="text-[10px] text-slate-400">Topic-comment syntax</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-cyan-500/30">
-            <span className="text-xl mb-1 block">⚡</span>
+          <div className="p-3.5 rounded-2xl bg-slate-950 border border-cyan-500/30 flex flex-col items-center">
+            <Zap className="w-5 h-5 text-cyan-400 mb-1.5" />
             <span className="text-xs font-bold text-cyan-300 block">3. Kinematic Lerp</span>
             <span className="text-[10px] text-slate-400">60FPS joint interpolation</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-emerald-500/30">
-            <span className="text-xl mb-1 block">🤟</span>
-            <span className="text-xs font-bold text-emerald-300 block">4. Animated Signer</span>
+          <div className="p-3.5 rounded-2xl bg-slate-950 border border-emerald-500/30 flex flex-col items-center">
+            <Layers className="w-5 h-5 text-emerald-400 mb-1.5" />
+            <span className="text-xs font-bold text-emerald-300 block">4. Humanoid Signer</span>
             <span className="text-[10px] text-slate-400">Deaf patient comprehension</span>
           </div>
         </div>

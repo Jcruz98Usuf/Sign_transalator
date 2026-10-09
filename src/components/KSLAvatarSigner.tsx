@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   AlertCircle,
+  BookOpen,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -16,14 +17,43 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Search,
   Send,
   Sparkles,
   Volume2,
   Zap,
 } from 'lucide-react';
-import { KSLSignDefinition, KSLKeyframe, ArmPose, HandPose } from '../types/ksl';
+import { KSLSignDefinition, KSLKeyframe } from '../types/ksl';
 import { KSL_LEXICON, interpolateKeyframe, generateFingerspellSign } from '../services/kslAnimations';
 import { audioCommService } from '../services/ttsService';
+import { VRMAvatarReplayScene } from './VRMAvatarReplayScene';
+import { MVP_SIGNS, SIGN_VOCABULARY } from '../signs';
+import { SignRecording } from '../types/vrmSign';
+
+function mapGlossToVrmSign(gloss: string): SignRecording {
+  const g = gloss.toUpperCase();
+  if (g.includes('PAIN') || g.includes('MAUMIVU')) return MVP_SIGNS.pain;
+  if (g.includes('HELP') || g.includes('MSAADA')) return MVP_SIGNS.help;
+  if (g.includes('DOCTOR') || g.includes('DAKTARI')) return MVP_SIGNS.doctor;
+  if (g.includes('WATER') || g.includes('MAJI')) return MVP_SIGNS.water;
+  if (g.includes('MEDICINE') || g.includes('DAWA')) return MVP_SIGNS.medicine;
+  if (g.includes('FEVER') || g.includes('HOMA')) return MVP_SIGNS.fever;
+  if (g.includes('HOSPITAL') || g.includes('HOSPITALI')) return MVP_SIGNS.hospital;
+  if (g.includes('EMERGENCY') || g.includes('DHARURA')) return MVP_SIGNS.emergency;
+  if (g.includes('INJECTION') || g.includes('SINDANO')) return MVP_SIGNS.injection;
+  if (g.includes('BLOOD') || g.includes('DAMU')) return MVP_SIGNS.blood;
+  if (g.includes('STOMACH') || g.includes('TUMBO')) return MVP_SIGNS.stomach;
+  if (g.includes('BREATH') || g.includes('KUPUMUA')) return MVP_SIGNS.breathing;
+  if (g.includes('EXAMINE') || g.includes('CHUNGUZA')) return MVP_SIGNS.examine;
+  if (g.includes('FOOD') || g.includes('CHAKULA')) return MVP_SIGNS.food;
+  if (g.includes('SLEEP') || g.includes('USINGIZI')) return MVP_SIGNS.sleep;
+  if (g.includes('WHERE') || g.includes('WAPI')) return MVP_SIGNS.where;
+  if (g.includes('HEADACHE') || g.includes('KICHWA')) return MVP_SIGNS.headache;
+  if (g.includes('YES') || g.includes('NDIYO')) return MVP_SIGNS.yes;
+  if (g.includes('NO') || g.includes('HAPANA')) return MVP_SIGNS.no;
+  if (g.includes('THANK') || g.includes('ASANTE')) return MVP_SIGNS.thank_you;
+  return MVP_SIGNS.hello;
+}
 
 interface KSLAvatarSignerProps {
   initialSpeech?: string;
@@ -54,6 +84,46 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
   const [clinicalIntent, setClinicalIntent] = useState<string>(
     'Inquiring about exact anatomical location of acute distress'
   );
+
+  const [wordSearch, setWordSearch] = useState<string>('');
+  const [wordFilter, setWordFilter] = useState<'all' | 'phrases' | 'vocabulary'>('all');
+
+  // Combined translatable items list
+  const translatableItems = useMemo(() => {
+    const phrases = [
+      { id: 'p1', type: 'phrase' as const, sw: 'Unasikia maumivu wapi?', en: 'Where do you feel pain?', gloss: 'WEWE MAUMIVU WAPI' },
+      { id: 'p2', type: 'phrase' as const, sw: 'Daktari anakuja sasa kutoa msaada', en: 'Doctor is coming now to help', gloss: 'DAKTARI KUJA MSAADA' },
+      { id: 'p3', type: 'phrase' as const, sw: 'Kunywa maji na dawa hii', en: 'Drink water with this medicine', gloss: 'KUNYWA MAJI DAWA' },
+      { id: 'p4', type: 'phrase' as const, sw: 'Je, una homa au joto jingi?', en: 'Do you have a fever or high temp?', gloss: 'WEWE HOMA JOTO JINGI' },
+      { id: 'p5', type: 'phrase' as const, sw: 'Tunafanya sindano ya haraka hospitali', en: 'Giving an urgent injection', gloss: 'SINDANO HARAKA HOSPITALI' },
+      { id: 'p6', type: 'phrase' as const, sw: 'Kuna maumivu kifuani au tumbo?', en: 'Pain in chest or stomach?', gloss: 'MAUMIVU KIFUA TUMBO' },
+    ];
+
+    const vocabWords = SIGN_VOCABULARY.map((v) => ({
+      id: v.id,
+      type: 'vocabulary' as const,
+      sw: v.swahili,
+      en: v.english,
+      gloss: v.kslGloss || v.label,
+    }));
+
+    const combined = [...phrases, ...vocabWords];
+
+    return combined.filter((item) => {
+      const matchesFilter =
+        wordFilter === 'all' ||
+        (wordFilter === 'phrases' && item.type === 'phrase') ||
+        (wordFilter === 'vocabulary' && item.type === 'vocabulary');
+
+      const matchesSearch =
+        wordSearch.trim() === '' ||
+        item.sw.toLowerCase().includes(wordSearch.toLowerCase()) ||
+        item.en.toLowerCase().includes(wordSearch.toLowerCase()) ||
+        item.gloss.toLowerCase().includes(wordSearch.toLowerCase());
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [wordFilter, wordSearch]);
 
   const animFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -131,6 +201,14 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
     }
   };
 
+  // Sync when initialSpeech prop changes (e.g. from Sign Guide or Message Stream)
+  useEffect(() => {
+    if (initialSpeech && initialSpeech.trim()) {
+      setSpeechInput(initialSpeech);
+      handleTranslateVoiceToKSL(initialSpeech);
+    }
+  }, [initialSpeech]);
+
   // Main 60FPS Animation Loop
   useEffect(() => {
     let lastTime = performance.now();
@@ -170,13 +248,10 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
     };
   }, [isPlaying, currentSignIndex, kslSequence, currentSign, playbackSpeed, isLooping]);
 
-  // Compute interpolated keyframe pose
-  const activeFrame: KSLKeyframe = useMemo(() => {
-    if (!currentSign || !currentSign.keyframes) {
-      return interpolateKeyframe(KSL_LEXICON[0].keyframes, 0);
-    }
-    return interpolateKeyframe(currentSign.keyframes, currentProgress);
-  }, [currentSign, currentProgress]);
+  // Resolve VRM recording for active sign
+  const activeVrmRecording: SignRecording = useMemo(() => {
+    return mapGlossToVrmSign(currentSign.gloss);
+  }, [currentSign.gloss]);
 
   // Handle Voice Dictation for Doctor
   const toggleVoiceRecording = () => {
@@ -217,79 +292,6 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
     }
   };
 
-  // Helper to render hand fingers
-  const renderHandFingers = (arm: ArmPose, isRight: boolean) => {
-    const wx = arm.wrist.x;
-    const wy = arm.wrist.y;
-    const ex = arm.elbow.x;
-    const ey = arm.elbow.y;
-
-    // Angle of forearm
-    const armAngle = Math.atan2(wy - ey, wx - ex);
-    const hand = arm.hand;
-
-    // 5 fingers: Thumb (0), Index (1), Middle (2), Ring (3), Pinky (4)
-    const fingerOffsets = isRight
-      ? [
-          { angleOffset: -0.6, length: 18 * hand.thumb, color: '#38bdf8' },
-          { angleOffset: -0.2, length: 24 * hand.index, color: '#14b8a6' },
-          { angleOffset: 0.0, length: 26 * hand.middle, color: '#14b8a6' },
-          { angleOffset: 0.2, length: 23 * hand.ring, color: '#14b8a6' },
-          { angleOffset: 0.4, length: 19 * hand.pinky, color: '#14b8a6' },
-        ]
-      : [
-          { angleOffset: 0.6, length: 18 * hand.thumb, color: '#38bdf8' },
-          { angleOffset: 0.2, length: 24 * hand.index, color: '#14b8a6' },
-          { angleOffset: 0.0, length: 26 * hand.middle, color: '#14b8a6' },
-          { angleOffset: -0.2, length: 23 * hand.ring, color: '#14b8a6' },
-          { angleOffset: -0.4, length: 19 * hand.pinky, color: '#14b8a6' },
-        ];
-
-    return (
-      <g>
-        {/* Palm circle */}
-        <circle
-          cx={wx}
-          cy={wy}
-          r={9}
-          fill="#f8fafc"
-          stroke="#0f766e"
-          strokeWidth="2"
-          className="shadow-sm"
-        />
-
-        {/* Fingers */}
-        {fingerOffsets.map((f, i) => {
-          const totalAngle = armAngle + f.angleOffset * (1 + hand.spread * 0.5);
-          const fx = wx + Math.cos(totalAngle) * Math.max(8, f.length);
-          const fy = wy + Math.sin(totalAngle) * Math.max(8, f.length);
-
-          return (
-            <g key={i}>
-              <line
-                x1={wx}
-                y1={wy}
-                x2={fx}
-                y2={fy}
-                stroke="#0d9488"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              <circle
-                cx={fx}
-                cy={fy}
-                r={3}
-                fill={f.color}
-                stroke="#ffffff"
-                strokeWidth="1"
-              />
-            </g>
-          );
-        })}
-      </g>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* KSL Header Banner */}
@@ -298,16 +300,16 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                Voice ➡️ KSL Sign Animation
+                Voice to Sign (KSL)
               </span>
               <span className="text-xs text-slate-400">
                 Lugha ya Ishara ya Kenya (Kenyan Sign Language)
               </span>
             </div>
             <h2 className="text-xl font-extrabold text-slate-100 flex items-center gap-2">
-              <span>Interactive KSL Medical Signer Avatar</span>
+              <span>Interactive KSL Medical Signer</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                KENYA 🇰🇪
+                Kenya
               </span>
             </h2>
             <p className="text-xs text-slate-400 max-w-2xl mt-1 leading-relaxed">
@@ -342,10 +344,10 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
 
       {/* Main Avatar & Timeline Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left 7 Cols: The Animated KSL Mannequin / Avatar */}
+        {/* Left 7 Cols: The Animated KSL VRM Avatar */}
         <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
           {/* Avatar Top Bar */}
-          <div className="px-4 py-3 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-teal-400 animate-pulse" />
               <span className="text-xs font-bold text-slate-200 font-mono">
@@ -353,206 +355,47 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
               </span>
             </div>
 
-            {/* Playback Speed Switcher */}
-            <div className="flex items-center gap-1">
-              {[0.5, 0.75, 1.0, 1.25].map((spd) => (
-                <button
-                  key={spd}
-                  onClick={() => setPlaybackSpeed(spd)}
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors ${
-                    playbackSpeed === spd
-                      ? 'bg-teal-500 text-slate-950 font-black'
-                      : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {spd}x
-                </button>
-              ))}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* VRM Engine Badge */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-950/70 border border-teal-800/60 text-teal-300 text-[10px] font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+                <span>VRM 1.0 Avatar Signer</span>
+              </div>
+
+              {/* Playback Speed Switcher */}
+              <div className="flex items-center gap-1">
+                {[0.5, 0.75, 1.0, 1.25].map((spd) => (
+                  <button
+                    key={spd}
+                    onClick={() => setPlaybackSpeed(spd)}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors ${
+                      playbackSpeed === spd
+                        ? 'bg-teal-500 text-slate-950 font-black'
+                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {spd}x
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* 3D / Kinematic Vector Avatar Canvas */}
-          <div className="relative aspect-[4/3] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 overflow-hidden">
-            {/* Background Medical Cross Pattern */}
-            <div className="absolute inset-0 opacity-5 pointer-events-none flex items-center justify-center">
-              <div className="w-64 h-64 border-4 border-teal-400 rounded-full flex items-center justify-center" />
-            </div>
-
-            {/* Interactive Kinematic Human SVG */}
-            <svg
-              viewBox="0 0 400 480"
-              className="w-full h-full max-h-[460px] drop-shadow-2xl select-none"
-            >
-              <defs>
-                <linearGradient id="scrubsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#0f766e" />
-                  <stop offset="100%" stopColor="#115e59" />
-                </linearGradient>
-                <linearGradient id="skinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#f8fafc" />
-                  <stop offset="100%" stopColor="#e2e8f0" />
-                </linearGradient>
-              </defs>
-
-              {/* Torso & Shoulders (Doctor Scrubs) */}
-              <path
-                d="M 130 210 Q 200 230 270 210 L 290 440 L 110 440 Z"
-                fill="url(#scrubsGrad)"
-                stroke="#14b8a6"
-                strokeWidth="2"
-              />
-
-              {/* Stethoscope around neck */}
-              <path
-                d="M 170 200 C 170 260 230 260 230 200"
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              <circle cx="200" cy="270" r="8" fill="#0284c7" stroke="#38bdf8" strokeWidth="2" />
-
-              {/* Neck */}
-              <rect x="185" y="150" width="30" height="45" rx="6" fill="url(#skinGrad)" />
-
-              {/* Head */}
-              <g transform={`rotate(${activeFrame.head.tilt * 50} 200 110)`}>
-                {/* Hair */}
-                <path
-                  d="M 155 100 C 155 45 245 45 245 100 C 245 70 155 70 155 100 Z"
-                  fill="#1e293b"
-                />
-
-                {/* Face Base */}
-                <ellipse
-                  cx="200"
-                  cy="110"
-                  rx="45"
-                  ry="55"
-                  fill="url(#skinGrad)"
-                  stroke="#cbd5e1"
-                  strokeWidth="2"
-                />
-
-                {/* Eyebrows (Dynamic for Question/Pain/Neutral) */}
-                {activeFrame.head.brows === 'raised' ? (
-                  <>
-                    <path d="M 175 82 Q 185 75 193 83" fill="none" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-                    <path d="M 207 83 Q 215 75 225 82" fill="none" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-                  </>
-                ) : activeFrame.head.brows === 'furrowed' ? (
-                  <>
-                    <path d="M 175 87 Q 185 92 195 89" fill="none" stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
-                    <path d="M 205 89 Q 215 92 225 87" fill="none" stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
-                  </>
-                ) : (
-                  <>
-                    <path d="M 175 85 Q 185 82 193 85" fill="none" stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" />
-                    <path d="M 207 85 Q 215 82 225 85" fill="none" stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" />
-                  </>
-                )}
-
-                {/* Eyes */}
-                <ellipse cx="184" cy="98" rx="4.5" ry="5.5" fill="#0f172a" />
-                <ellipse cx="216" cy="98" rx="4.5" ry="5.5" fill="#0f172a" />
-                <circle cx="185.5" cy="96" r="1.5" fill="#ffffff" />
-                <circle cx="217.5" cy="96" r="1.5" fill="#ffffff" />
-
-                {/* Nose */}
-                <path d="M 200 102 L 198 116 L 204 116" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
-
-                {/* Mouth (Dynamic Expression) */}
-                {activeFrame.head.mouth === 'grimace' ? (
-                  <path d="M 186 135 Q 200 128 214 135" fill="none" stroke="#e11d48" strokeWidth="3" strokeLinecap="round" />
-                ) : activeFrame.head.mouth === 'smile' ? (
-                  <path d="M 186 130 Q 200 142 214 130" fill="none" stroke="#0d9488" strokeWidth="3" strokeLinecap="round" />
-                ) : activeFrame.head.mouth === 'open' ? (
-                  <ellipse cx="200" cy="133" rx="8" ry="6" fill="#475569" stroke="#0f172a" strokeWidth="2" />
-                ) : (
-                  <path d="M 188 132 L 212 132" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" />
-                )}
-              </g>
-
-              {/* Left Arm (Upper Arm, Forearm, Hand) */}
-              <g>
-                {/* Upper arm */}
-                <line
-                  x1={activeFrame.leftArm.shoulder.x}
-                  y1={activeFrame.leftArm.shoulder.y}
-                  x2={activeFrame.leftArm.elbow.x}
-                  y2={activeFrame.leftArm.elbow.y}
-                  stroke="#14b8a6"
-                  strokeWidth="14"
-                  strokeLinecap="round"
-                />
-                {/* Forearm */}
-                <line
-                  x1={activeFrame.leftArm.elbow.x}
-                  y1={activeFrame.leftArm.elbow.y}
-                  x2={activeFrame.leftArm.wrist.x}
-                  y2={activeFrame.leftArm.wrist.y}
-                  stroke="#2dd4bf"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                />
-                {/* Elbow joint */}
-                <circle
-                  cx={activeFrame.leftArm.elbow.x}
-                  cy={activeFrame.leftArm.elbow.y}
-                  r="7"
-                  fill="#0f766e"
-                  stroke="#5eead4"
-                  strokeWidth="2"
-                />
-                {/* Hand and Fingers */}
-                {renderHandFingers(activeFrame.leftArm, false)}
-              </g>
-
-              {/* Right Arm (Dominant Arm) */}
-              <g>
-                {/* Upper arm */}
-                <line
-                  x1={activeFrame.rightArm.shoulder.x}
-                  y1={activeFrame.rightArm.shoulder.y}
-                  x2={activeFrame.rightArm.elbow.x}
-                  y2={activeFrame.rightArm.elbow.y}
-                  stroke="#0284c7"
-                  strokeWidth="14"
-                  strokeLinecap="round"
-                />
-                {/* Forearm */}
-                <line
-                  x1={activeFrame.rightArm.elbow.x}
-                  y1={activeFrame.rightArm.elbow.y}
-                  x2={activeFrame.rightArm.wrist.x}
-                  y2={activeFrame.rightArm.wrist.y}
-                  stroke="#38bdf8"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                />
-                {/* Elbow joint */}
-                <circle
-                  cx={activeFrame.rightArm.elbow.x}
-                  cy={activeFrame.rightArm.elbow.y}
-                  r="7"
-                  fill="#0369a1"
-                  stroke="#7dd3fc"
-                  strokeWidth="2"
-                />
-                {/* Hand and Fingers */}
-                {renderHandFingers(activeFrame.rightArm, true)}
-              </g>
-            </svg>
+          {/* Avatar Rendering Viewport: Pure VRM Engine */}
+          <div className="relative w-full h-[460px] bg-slate-950">
+            <VRMAvatarReplayScene
+              currentRecording={activeVrmRecording}
+              playbackTimeMs={currentProgress * (activeVrmRecording.durationMs || 1500)}
+              isPlaying={isPlaying}
+            />
 
             {/* Movement Action Subtitle Floating Pill */}
-            {activeFrame.caption && (
-              <div className="absolute bottom-4 inset-x-6 z-10 flex justify-center">
-                <div className="bg-slate-950/90 border border-teal-500/40 text-teal-200 text-xs px-3.5 py-1.5 rounded-full shadow-xl backdrop-blur-md flex items-center gap-2 animate-fade-in font-medium">
-                  <Zap className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                  <span>{activeFrame.caption}</span>
-                </div>
+            <div className="absolute bottom-4 inset-x-6 z-10 flex justify-center pointer-events-none">
+              <div className="bg-slate-950/90 border border-teal-500/40 text-teal-200 text-xs px-3.5 py-1.5 rounded-full shadow-xl backdrop-blur-md flex items-center gap-2 font-medium">
+                <Zap className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <span>{currentSign.swahili} — {currentSign.english}</span>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Timeline & Scrubber Bar */}
@@ -666,7 +509,7 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                 <Mic className="w-4 h-4 text-cyan-400" />
-                <span>Clinician Speech Input (Voice 🎤)</span>
+                <span>Clinician Speech Input</span>
               </h3>
               <span className="text-[10px] font-mono text-slate-400">English / Swahili</span>
             </div>
@@ -712,35 +555,74 @@ export const KSLAvatarSigner: React.FC<KSLAvatarSignerProps> = ({ initialSpeech 
               </button>
             </div>
 
-            {/* Quick Clinical Presets (Kiswahili & English) */}
-            <div className="pt-2 border-t border-slate-800">
-              <span className="text-[11px] font-semibold text-slate-400 block mb-2">
-                Quick Medical Phrases (KSL Ready):
-              </span>
-              <div className="space-y-1.5">
-                {[
-                  { sw: 'Unasikia maumivu wapi?', en: 'Where do you feel pain?' },
-                  { sw: 'Daktari anakuja sasa kutoa msaada', en: 'Doctor is coming now to help' },
-                  { sw: 'Kunywa maji na dawa hii', en: 'Drink water with this medicine' },
-                  { sw: 'Je, una homa au joto jingi?', en: 'Do you have a fever or high temperature?' },
-                  { sw: 'Tunafanya sindano ya haraka hospitali', en: 'We are giving an emergency injection' },
-                ].map((item, idx) => (
-                  <button
-                    key={idx}
+            {/* Clean Compact List of Words and Phrases That Can Be Translated */}
+            <div className="pt-3 border-t border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Translatable Words & Phrases ({translatableItems.length}):</span>
+                </span>
+                <div className="flex items-center gap-1 text-[10px]">
+                  {(['all', 'phrases', 'vocabulary'] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setWordFilter(filter)}
+                      className={`px-2 py-0.5 rounded capitalize font-medium transition-colors ${
+                        wordFilter === filter
+                          ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Search box for words */}
+              <div className="relative">
+                <Search className="w-3 h-3 text-slate-500 absolute left-2.5 top-2" />
+                <input
+                  type="text"
+                  value={wordSearch}
+                  onChange={(e) => setWordSearch(e.target.value)}
+                  placeholder="Filter translatable words or phrases..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-7 pr-2.5 py-1 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+
+              {/* Compact List */}
+              <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                {translatableItems.map((item) => (
+                  <div
+                    key={item.id}
                     onClick={() => {
                       setSpeechInput(item.sw);
                       handleTranslateVoiceToKSL(item.sw);
                     }}
-                    className="w-full text-left p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-teal-500/40 hover:bg-slate-800/60 text-xs transition-all flex items-start justify-between group"
+                    className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-teal-500/40 hover:bg-slate-800/60 cursor-pointer text-xs transition-all flex items-center justify-between gap-2 group"
                   >
-                    <div>
-                      <span className="font-semibold text-teal-300 block">{item.sw}</span>
-                      <span className="text-[10px] text-slate-400">{item.en}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-teal-300 text-xs truncate">
+                          {item.sw}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                          [{item.gloss}]
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 truncate block">
+                        {item.en}
+                      </span>
                     </div>
-                    <span className="text-[10px] text-slate-500 group-hover:text-teal-400 transition-colors">
-                      Translate ➡️
-                    </span>
-                  </button>
+
+                    <button
+                      type="button"
+                      className="text-[10px] font-medium text-slate-400 group-hover:text-teal-300 bg-slate-900 group-hover:bg-slate-800 px-2 py-0.5 rounded border border-slate-800 shrink-0 transition-colors"
+                    >
+                      Translate &rarr;
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>

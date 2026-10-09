@@ -8,34 +8,46 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 app.use(express.json());
 
+// Fast caching for 3D avatar assets (.vrm, .glb)
+app.use((req, res, next) => {
+  if (req.path.endsWith('.vrm') || req.path.endsWith('.glb')) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+  next();
+});
+
 // Initialize Gemini client (uses process.env.GEMINI_API_KEY)
 const ai = new GoogleGenAI();
 
 app.post('/api/refine-signs', async (req, res) => {
   try {
-    const { signs, targetLanguage = 'English', role = 'patient' } = req.body;
+    const { signs, targetLanguage = 'English (US)', role = 'patient' } = req.body;
     const signList = Array.isArray(signs) ? signs.join(', ') : (signs || '');
 
     if (!signList.trim()) {
       return res.status(400).json({ error: 'No signs or text provided' });
     }
 
-    const prompt = `You are "Language Doctor", an AI medical communication system.
-A ${role} has communicated the following sequence of recognized sign language tokens or speech input:
+    const prompt = `You are "Language Doctor", an expert medical communication system in Kenya specializing in Kenyan Sign Language (KSL), Kiswahili (Swahili), and English.
+A ${role} has communicated the following sequence of sign language tokens or speech input:
 "${signList}"
 
-Target output language: "${targetLanguage}"
-
-Perform the following tasks:
-1. "synthesizedText": Translate the raw tokens into a natural, respectful, and clinically clear sentence in English (e.g. if tokens are "HELP PAIN MEDICINE", convert to "I need help with my pain medication").
-2. "translatedText": Translate the synthesized sentence into the requested target language ("${targetLanguage}"). If target language is English, keep it in English.
-3. "urgency": Classify clinical priority as one of: "ROUTINE", "URGENT", "EMERGENCY".
-4. "actionRecommendation": Provide a concise 1-sentence prompt for the attending nurse or clinician (e.g., "Assess pain scale 1-10 and verify prescription chart.").
+Requirements:
+1. "kslGloss": Standard Kenyan Sign Language gloss representation (e.g. "MSAADA MAUMIVU DAWA" or "HOMA SINDANO WAPI").
+2. "swahiliText": Natural, fluent, culturally respectful Kenyan Swahili (Kiswahili) sentence (e.g. "Ninahisi maumivu makali na ninahitaji dawa ya kutuliza.").
+3. "englishText": Clear, respectful, accurate English clinical translation (e.g. "I am experiencing severe pain and need medication.").
+4. "isDirectlyTranslatable": boolean. Set to true if the tokens/signs correspond to clear medical or conversational concepts. Set to false if the signs are ambiguous, unrecognized, or fragmented.
+5. "fallbackExplanation": If not directly translatable, provide a clear bilingual clarification prompt asking the user to re-sign or clarify (e.g. "Ishara haikutambulika moja kwa moja: tafadhali ashiri tena au fafanua / Sign not directly translatable: please re-sign or clarify."). If directly translatable, provide an empty string "".
+6. "urgency": Clinical triage classification: "ROUTINE", "URGENT", or "EMERGENCY".
+7. "actionRecommendation": Brief 1-sentence bilingual clinical recommendation for the nurse/doctor (e.g. "Pima kiwango cha maumivu (1-10) na uangalie dawa / Assess pain scale 1-10 and verify medication chart.").
 
 Respond strictly in valid JSON format:
 {
-  "synthesizedText": "string",
-  "translatedText": "string",
+  "kslGloss": "string",
+  "swahiliText": "string",
+  "englishText": "string",
+  "isDirectlyTranslatable": boolean,
+  "fallbackExplanation": "string",
   "urgency": "ROUTINE" | "URGENT" | "EMERGENCY",
   "actionRecommendation": "string"
 }`;
@@ -49,17 +61,27 @@ Respond strictly in valid JSON format:
     });
 
     const parsed = JSON.parse(response.text || '{}');
+    // Ensure synthesizedText & translatedText remain backwards-compatible
+    parsed.synthesizedText = parsed.englishText || parsed.swahiliText || `Signs: ${signList}`;
+    parsed.translatedText = parsed.swahiliText || parsed.englishText || signList;
+    parsed.isFallback = !parsed.isDirectlyTranslatable;
     res.json(parsed);
   } catch (err: any) {
     console.error('Gemini synthesis error:', err?.message || err);
-    // Graceful offline fallback
+    // Graceful offline fallback with full Swahili & English
     const rawTokens = Array.isArray(req.body.signs) ? req.body.signs.join(' ') : req.body.signs;
-    const isEmergency = /emergency|pain|help/i.test(rawTokens);
+    const isEmergency = /emergency|pain|help|dharura|maumivu|msaada/i.test(rawTokens);
     res.json({
+      kslGloss: rawTokens.toUpperCase(),
+      swahiliText: `Ujumbe wa mgonjwa: ${rawTokens}`,
+      englishText: `Patient communication: ${rawTokens}`,
+      isDirectlyTranslatable: true,
+      fallbackExplanation: '',
+      isFallback: false,
       synthesizedText: `Message: ${rawTokens}`,
-      translatedText: rawTokens,
+      translatedText: `Ujumbe: ${rawTokens}`,
       urgency: isEmergency ? 'URGENT' : 'ROUTINE',
-      actionRecommendation: 'Check patient vitals and communication board.'
+      actionRecommendation: 'Tathmini hali ya mgonjwa / Check patient vitals.'
     });
   }
 });

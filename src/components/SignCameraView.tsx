@@ -5,6 +5,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
+  Activity,
   Camera,
   CameraOff,
   CheckCircle,
@@ -341,8 +342,8 @@ export const SignCameraView: React.FC<SignCameraViewProps> = ({
         {/* Standby / Fallback Placeholder when Camera is off */}
         {!isCameraActive && !simulationActive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0 bg-slate-950/90">
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-3xl mb-4 shadow-inner">
-              🤟
+            <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-teal-400 mb-4 shadow-inner">
+              <Video className="w-8 h-8" />
             </div>
             <h3 className="text-base font-semibold text-slate-200 mb-1">
               Hand Tracking Standby
@@ -370,8 +371,8 @@ export const SignCameraView: React.FC<SignCameraViewProps> = ({
         {/* Live Detected Sign Banner (Floating HUD) */}
         {currentPrediction && (
           <div className="absolute top-4 left-4 z-20 bg-slate-950/90 border border-teal-500/40 rounded-xl p-3 shadow-2xl backdrop-blur-md flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-2xl">
-              {CORE_SIGNS.find((s) => s.label === currentPrediction.sign)?.icon || '🤟'}
+            <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400">
+              <CheckCircle className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -432,31 +433,27 @@ export const SignCameraView: React.FC<SignCameraViewProps> = ({
         )}
       </div>
 
-      {/* Simulator / Quick-Test Buttons Strip */}
+      {/* Simulator / Quick-Test Gesture Chips */}
       <div className="p-3 bg-slate-900/90 border-t border-slate-800">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-            <span>Interactive Medical Signs (Test or Inject Gesture)</span>
+            <Activity className="w-3.5 h-3.5 text-teal-400" />
+            <span>Interactive Landmark Gestures (Pipeline Simulation)</span>
           </span>
           <span className="text-[11px] text-slate-400 hidden sm:inline">
-            Click any sign to simulate & verify pipeline
+            Click gesture to test real-time recognition
           </span>
         </div>
-        <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
           {CORE_SIGNS.map((sign) => (
             <button
               key={sign.id}
               onClick={() => simulateSign(sign.label)}
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-teal-500/50 hover:bg-slate-800/80 transition-all group"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-teal-500/50 hover:bg-slate-850 text-slate-300 hover:text-teal-200 transition-all shrink-0 flex items-center gap-1.5 font-medium shadow-sm"
               title={`${sign.label}: ${sign.instruction}`}
             >
-              <span className="text-base group-hover:scale-110 transition-transform">
-                {sign.icon}
-              </span>
-              <span className="text-[10px] font-medium text-slate-300 mt-1 truncate max-w-full">
-                {sign.label}
-              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+              <span>{sign.label}</span>
             </button>
           ))}
         </div>

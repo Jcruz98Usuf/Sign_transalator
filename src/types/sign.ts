@@ -64,6 +64,11 @@ export interface UnifiedMessage {
   sender: 'patient' | 'doctor';
   modality: 'sign' | 'voice' | 'text';
   rawContent: string;
+  kslGloss?: string;
+  swahiliText?: string;
+  englishText?: string;
+  isFallback?: boolean;
+  fallbackExplanation?: string;
   synthesizedText?: string;
   translatedText?: string;
   targetLanguage: string;

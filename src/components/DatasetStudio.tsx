@@ -94,6 +94,15 @@ export const DatasetStudio: React.FC<DatasetStudioProps> = ({
     onDatasetUpdated();
   };
 
+  // Load KSL Benchmark Dataset (KNAD / Maseno KSL500)
+  const handleLoadKSLCorpus = () => {
+    const count = signClassifier.loadKSLMedicalBenchmarkDataset();
+    refreshSamples();
+    onDatasetUpdated();
+    setRetrainSuccess(`Successfully imported ${count} KSL benchmark landmark samples (KNAD / Maseno KSL500 Healthcare Corpus)!`);
+    setTimeout(() => setRetrainSuccess(null), 4000);
+  };
+
   // Retrain Classifier (Step 3)
   const handleRetrain = () => {
     setIsRetraining(true);
@@ -149,6 +158,15 @@ export const DatasetStudio: React.FC<DatasetStudioProps> = ({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleLoadKSLCorpus}
+              className="px-3 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 text-xs font-bold border border-teal-500/40 flex items-center gap-1.5 transition-colors shadow-sm"
+              title="Load benchmark 3D landmark dataset from Kenyan Sign Language Corpus (KNAD / Maseno KSL500)"
+            >
+              <Database className="w-3.5 h-3.5 text-teal-400" />
+              <span>Load KSL Clinical Benchmark</span>
+            </button>
+
             <label className="cursor-pointer px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors">
               <Upload className="w-3.5 h-3.5 text-cyan-400" />
               <span>Import Dataset</span>

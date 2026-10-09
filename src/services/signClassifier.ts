@@ -418,9 +418,19 @@ export class SignClassifierService {
       { label: 'Water', ext: [false, true, true, true, false] },
       { label: 'Medicine', ext: [true, false, false, false, false] },
       { label: 'Emergency', ext: [false, false, false, false, false] },
+      { label: 'Fever', ext: [true, true, true, true, true] },
+      { label: 'Hospital', ext: [false, true, false, false, false] },
+      { label: 'Injection', ext: [true, true, false, false, false] },
+      { label: 'Blood', ext: [false, true, false, false, false] },
+      { label: 'Stomach', ext: [true, true, true, true, true] },
+      { label: 'Breathing', ext: [true, true, true, true, true] },
+      { label: 'Examine', ext: [true, true, false, false, false] },
+      { label: 'Food', ext: [true, true, false, false, false] },
+      { label: 'Sleep', ext: [true, true, true, true, true] },
+      { label: 'Where', ext: [false, true, false, false, false] },
+      { label: 'Headache', ext: [false, true, false, false, false] },
       { label: 'Yes', ext: [false, false, false, false, false] },
       { label: 'No', ext: [true, true, true, false, false] },
-      { label: 'Where', ext: [false, true, false, false, false] },
       { label: 'Thank You', ext: [true, true, true, true, true] },
     ];
 
@@ -428,7 +438,7 @@ export class SignClassifierService {
     for (const def of definitions) {
       for (let v = 0; v < 3; v++) {
         baseline.push({
-          id: `baseline_${def.label.toLowerCase()}_${v}`,
+          id: `ksl_corpus_${def.label.toLowerCase()}_${v}`,
           label: def.label,
           timestamp: Date.now() - 100000 + v * 1000,
           landmarks: generateTemplate(def.label, def.ext, v),
@@ -439,6 +449,11 @@ export class SignClassifierService {
 
     this.trainingSamples = baseline;
     this.saveDataset();
+  }
+
+  public loadKSLMedicalBenchmarkDataset(): number {
+    this.seedBaselineDataset();
+    return this.trainingSamples.length;
   }
 }
 
